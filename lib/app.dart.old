@@ -1,0 +1,75 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:store_tracker/core/styles/app_theme.dart';
+import 'package:store_tracker/di/injector.dart';
+import 'package:store_tracker/presentation/router/app_router.dart';
+import 'package:store_tracker/presentation/shared/bloc/app_bloc_observer.dart';
+
+import 'firebase_options.dart' show DefaultFirebaseOptions;
+
+class App extends StatelessWidget {
+  const App({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider(create: (_) => getIt<AuthRepository>()),
+        RepositoryProvider(create: (_) => getIt<LogRepository>()),
+        RepositoryProvider(create: (_) => getIt<StockRepository>()),
+      ],
+      child: MaterialApp(
+        title: 'Store Tracker',
+        debugShowCheckedModeBanner: false,
+        
+        // Theme configuration
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
+        
+        // Routing configuration
+        onGenerateRoute: AppRouter().onGenerateRoute,
+        initialRoute: RouteNames.splash, // Or '/'
+        
+        // Navigation observers
+        navigatorObservers: [
+          AppRouter.routeObserver,
+          // Add any analytics observers here
+        ],
+        
+        // App-wide configurations
+        builder: (context, child) {
+          return MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaleFactor: 1.0, // Prevents system text scaling
+            ),
+            child: child!,
+          );
+        },
+      ),
+    );
+  }
+
+  // Initialize app-wide services
+  static Future<void> initialize() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    
+    // Initialize Firebase
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    
+    // Set up dependency injection
+    await configureDependencies();
+    
+    // Initialize BLoC observer for debugging
+    Bloc.observer = AppBlocObserver();
+    
+    // Initialize other app-wide services
+    await NotificationService().init();
+    await LocalDatabase().init();
+    
+    // Add any other app-wide initializations here
+  }
+}
